@@ -1,3 +1,5 @@
+#step 1: setup, libraries, packages etc.
+
 .libPaths()
 assign(".lib.loc", "E:/AG Scholz/R libraries2", envir = environment(.libPaths))
 .libPaths()
@@ -7,7 +9,8 @@ library(Seurat)
 library(patchwork)
 library(dplyr)
 
-#sessionInfo()
+#step 2: load all datasets as matrices; Datasets 1-8 contain scRNA sequencing data from eight patients with serous ovarian cancers
+
 Matrix_1<- ReadMtx(  mtx = "T:/Dokumente/Hausarbeit/R_Datasets/Ovar/GSM6720925_ovarian_cancer2251.mtx.gz", 
                      cells = "T:/Dokumente/Hausarbeit/R_Datasets/Ovar/GSM6720925_ovarian_cancer_barcodes2251.tsv.gz",
                      features = "T:/Dokumente/Hausarbeit/R_Datasets/Ovar/GSM6720925_ovarian_cancer_genes2251.tsv.gz"
@@ -48,6 +51,9 @@ Matrix_8<- ReadMtx(
   cells = "T:/Dokumente/Hausarbeit/R_Datasets/Ovar/GSM6720932_8ovarian_cancer_barcodes_2497.tsv.gz",
   features = "T:/Dokumente/Hausarbeit/R_Datasets/Ovar/GSM6720932_8ovarian_cancer_features_2497.tsv.gz"
 )
+
+# step 3: create Seurat objects from each tumor dataset and annotate them for origin ("OvarCancer1-8") and condition ("tumor") = add coloumn to metadata
+
 Seurat_1<-CreateSeuratObject(counts = Matrix_1)
 Seurat_1
 Seurat_1[["origin"]]<-"OvarCancer1"
@@ -88,7 +94,7 @@ Seurat_8
 Seurat_8[["origin"]] <- "OvarCancer8"
 Seurat_8[["condition"]]<- "tumor"
 
-
+#step 4: store all eight seurat objects of tumor datasets in a list. Perform data normalization, assessment of variable features, scaling and PCA
 
 list_1<-list(Seurat_1,Seurat_2,Seurat_3, Seurat_4, Seurat_5, Seurat_6, Seurat_7, Seurat_8)
 
@@ -104,14 +110,18 @@ list_1 <- lapply(X= list_1, FUN = function(x){
 })
 
 
+#step 5: let R find integration anchors and perform dataset integration I
+
 data.anchors <- FindIntegrationAnchors(object.list = list_1, anchor.features = features, reduction = "rpca")
 data.combined <- IntegrateData(anchorset = data.anchors)
 
-DefaultAssay(data.combined) <- "integrated"
+DefaultAssay(data.combined) <- "integrated" #define, which data should be used for analysis (only integrational features or whole RNA assay)
 
 saveRDS(data.combined, file ="C:/Users/Landstoh/Documents/seurat_ovary_cancer_merged.RDS", compress = FALSE)
 
 data.combined <- readRDS(file="C:/Users/Landstoh/Documents/seurat_ovary_cancer_merged.RDS")
+
+# step 6: perform post-integration data analysis
 
 data.combined <- ScaleData(data.combined, verbose = TRUE)
 data.combined <- RunPCA(data.combined, npcs = 15, verbose = TRUE)
@@ -126,13 +136,15 @@ p0 <- DimPlot(data.combined, reduction = "umap", label = TRUE,
               repel = TRUE)
 p0
 
+# as we annotated the datasets for origin and condition, we can now split the integrated dataset up again and visualize all datasets seperately but in the frame of the merged dataset
+
 p1 <- DimPlot(data.combined, reduction = "umap",label = TRUE,
               repel = TRUE, split.by = "origin")
-p1
+p1 #normal UMAP
 
 p2 <- DimPlot(data.combined, reduction = "umap", label = TRUE, 
               repel = TRUE, group.by = "origin")
-p2
+p2 #UMAP grouped by origin (UMAP with 8 different colours, one for each original dataset)
 FeaturePlot(data.combined, features= c("WT1"),min.cutoff = "q10", max.cutoff = "q90",label = TRUE,
             repel = TRUE)
 
@@ -141,6 +153,8 @@ VlnPlot(data.combined, features = "WT1", pt.size = 0)
 
 FeaturePlot(data.combined, features = c("WT1"))
 
+# step 7: identification of marker genes for each cluster. Takes a few minutes.
+
 marker_gene(data.combined)
 marker_genes <- FindAllMarkers(data.combined, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 markers.all <- tibble(marker_genes %>%
@@ -148,6 +162,8 @@ markers.all <- tibble(marker_genes %>%
                         slice_max(n = 2, order_by = avg_log2FC))
 
 saveRDS(markers.all, file = "C:/Users/Landstoh/Documents/integrated_tumor_data_all_markers", compress =FALSE )
+
+# step 8: assign cell types to the clusters based on identified markers
 
 new_cluster_names <- c("T Cells", "NK", "Fibroblasts", "Plasma cells", "Smooth muscle", "Granulocytes", "B cells", "Neurons", "Macrophages", "Endothelial cells", "Endothelial cells", "Granulocytes", "Schwann cells / Neurons", "Keratinocytes",
                        "neuron/endothelia", "plasma cells", "fibroblasts/myoepithelial cells","Erythroid cells", "activated B cells", "endometrial stroma cells", "Myeloid cells", "dendritic cells", "Immune cells", "granulocytes")
