@@ -452,7 +452,7 @@ p18
 #viridis_inferno_dark_high = yellow-red-purple
 #viridis_inferno_light_high = purple-red-yellow
 #viridis_dark_high = yellow-green-blue
-#viridis_light_high = blue-greem-yellow
+#viridis_light_high = blue-green-yellow
 
 p14 <- FeaturePlot(data.all.merged, features = c("WT1"),reduction = "umap", repel = TRUE,colors_use = viridis_inferno_dark_high, split.by = "origin", min.cutoff = "q10", max.cutoff = "q90", ncol = 2) + patchwork::plot_layout(ncol = 4, nrow = 3)
 p14
